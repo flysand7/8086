@@ -494,7 +494,7 @@ static void cpu_exec(CPU_State *cpu_state, Instruction *out_inst) {
             set_flags_szp_value8(cpu_state, res);
             // TODO fix CO flags
             cpu_state->regs[REG_FL] &= ~FLAG_CF;
-            if(res) > 0) cpu_state->regs[REG_FL] |= FLAG_CF;
+            if(res > 0) cpu_state->regs[REG_FL] |= FLAG_CF;
             set_flag_af_sub(cpu_state, 0, arg); // TODO check
         }
         else if(inst.data_size == 2) {
@@ -522,6 +522,200 @@ static void cpu_exec(CPU_State *cpu_state, Instruction *out_inst) {
             uint16_t res = ~arg;
             store_operand_value16(cpu_state, inst, op, res);
         }
+    }
+    // INST_1ST(shl, B(110100), F_V, F_W, F_MOD, B(100), F_RM)
+    // INST_1ST(shr, B(110100), F_V, F_W, F_MOD, B(101), F_RM)
+    // INST_1ST(sar, B(110100), F_V, F_W, F_MOD, B(111), F_RM)
+    // INST_1ST(rol, B(110100), F_V, F_W, F_MOD, B(000), F_RM)
+    // INST_1ST(ror, B(110100), F_V, F_W, F_MOD, B(001), F_RM)
+    // INST_1ST(rcl, B(110100), F_V, F_W, F_MOD, B(010), F_RM)
+    // INST_1ST(rcr, B(110100), F_V, F_W, F_MOD, B(011), F_RM)
+    else if(inst.opcode == OPCODE_shl) {
+        assert(inst.noperands == 2);
+        assert(inst.operands[0].type != OPERAND_IMM);
+        Inst_Operand dst = inst.operands[0];
+        Inst_Operand src = inst.operands[1];
+        if(inst.data_size == 1) {
+            uint8_t arg0 = load_operand_value8(cpu_state, inst, dst);
+            uint8_t arg1 = load_operand_value8(cpu_state, inst, src);
+            arg1 &= 0x1f;
+            uint8_t res = arg0 << arg1;
+            store_operand_value8(cpu_state, inst, dst, res);
+            set_flags_szp_value8(cpu_state, res);
+            if(arg1 != 0) {
+                cpu_state->regs[REG_FL] &= ~FLAG_CF;
+                if(arg0 & 0x80) {
+                    cpu_state->regs[REG_FL] |= FLAG_CF;
+                }
+                if(arg1 == 1) {
+                    cpu_state->regs[REG_FL] &= ~FLAG_OF;
+                    if((arg0 & 0x80) == (res & 0x80)) {
+                        cpu_state->regs[REG_FL] |= FLAG_OF;
+                    }
+                }
+            }
+        }
+        else if(inst.data_size == 2) {
+            uint16_t arg0 = load_operand_value16(cpu_state, inst, dst);
+            uint8_t arg1 = load_operand_value8(cpu_state, inst, src);
+            arg1 &= 0x1f;
+            uint16_t res = arg0 << arg1;
+            store_operand_value16(cpu_state, inst, dst, res);
+            set_flags_szp_value16(cpu_state, res);
+            if(arg1 != 0) {
+                cpu_state->regs[REG_FL] &= ~FLAG_CF;
+                if(arg0 & 0x8000) {
+                    cpu_state->regs[REG_FL] |= FLAG_CF;
+                }
+                if(arg1 == 1) {
+                    cpu_state->regs[REG_FL] &= ~FLAG_OF;
+                    if((arg0 & 0x8000) == (res & 0x8000)) {
+                        cpu_state->regs[REG_FL] |= FLAG_OF;
+                    }
+                }
+            }
+        }
+    }
+    else if(inst.opcode == OPCODE_shr) {
+        assert(inst.noperands == 2);
+        assert(inst.operands[0].type != OPERAND_IMM);
+        Inst_Operand dst = inst.operands[0];
+        Inst_Operand src = inst.operands[1];
+        if(inst.data_size == 1) {
+            int8_t arg0 = load_operand_value8(cpu_state, inst, dst);
+            uint8_t arg1 = load_operand_value8(cpu_state, inst, src);
+            arg1 &= 0x1f;
+            int8_t res = arg0 >> arg1;
+            store_operand_value8(cpu_state, inst, dst, res);
+            set_flags_szp_value8(cpu_state, res);
+            if(arg1 != 0) {
+                cpu_state->regs[REG_FL] &= ~FLAG_CF;
+                if(arg0 & 0x01) {
+                    cpu_state->regs[REG_FL] |= FLAG_CF;
+                }
+                if(arg1 == 1) {
+                    cpu_state->regs[REG_FL] &= ~FLAG_OF;
+                    if(arg0 & 0x80) {
+                        cpu_state->regs[REG_FL] |= FLAG_OF;
+                    }
+                }
+            }
+        }
+        else if(inst.data_size == 2) {
+            int16_t arg0 = load_operand_value16(cpu_state, inst, dst);
+            uint8_t arg1 = load_operand_value8(cpu_state, inst, src);
+            arg1 &= 0x1f;
+            int16_t res = arg0 >> arg1;
+            store_operand_value16(cpu_state, inst, dst, res);
+            set_flags_szp_value16(cpu_state, res);
+            if(arg1 != 0) {
+                cpu_state->regs[REG_FL] &= ~FLAG_CF;
+                if(arg0 & 0x0001) {
+                    cpu_state->regs[REG_FL] |= FLAG_CF;
+                }
+                if(arg1 == 1) {
+                    cpu_state->regs[REG_FL] &= ~FLAG_OF;
+                    if(arg0 & 0x8000) {
+                        cpu_state->regs[REG_FL] |= FLAG_OF;
+                    }
+                }
+            }
+        }
+    }
+    else if(inst.opcode == OPCODE_sar) {
+        assert(inst.noperands == 2);
+        assert(inst.operands[0].type != OPERAND_IMM);
+        Inst_Operand dst = inst.operands[0];
+        Inst_Operand src = inst.operands[1];
+        if(inst.data_size == 1) {
+            uint8_t arg0 = load_operand_value8(cpu_state, inst, dst);
+            uint8_t arg1 = load_operand_value8(cpu_state, inst, src);
+            arg1 &= 0x1f;
+            uint8_t res = arg0 >> arg1;
+            store_operand_value8(cpu_state, inst, dst, res);
+            set_flags_szp_value8(cpu_state, res);
+            if(arg1 != 0) {
+                cpu_state->regs[REG_FL] &= ~FLAG_CF;
+                if(arg0 & 0x01) {
+                    cpu_state->regs[REG_FL] |= FLAG_CF;
+                }
+                if(arg1 == 1) {
+                    cpu_state->regs[REG_FL] &= ~FLAG_OF;
+                }
+            }
+        }
+        else if(inst.data_size == 2) {
+            uint16_t arg0 = load_operand_value16(cpu_state, inst, dst);
+            uint8_t arg1 = load_operand_value8(cpu_state, inst, src);
+            arg1 &= 0x1f;
+            uint16_t res = arg0 >> arg1;
+            store_operand_value16(cpu_state, inst, dst, res);
+            set_flags_szp_value16(cpu_state, res);
+            if(arg1 != 0) {
+                cpu_state->regs[REG_FL] &= ~FLAG_CF;
+                if(arg0 & 0x0001) {
+                    cpu_state->regs[REG_FL] |= FLAG_CF;
+                }
+                if(arg1 == 1) {
+                    cpu_state->regs[REG_FL] &= ~FLAG_OF;
+                }
+            }
+        }
+    }
+    else if(inst.opcode == OPCODE_rol) {
+        assert(inst.noperands == 2);
+        assert(inst.operands[0].type != OPERAND_IMM);
+        Inst_Operand dst = inst.operands[0];
+        Inst_Operand src = inst.operands[1];
+        if(inst.data_size == 1) {
+            uint8_t arg0 = load_operand_value8(cpu_state, inst, dst);
+            uint8_t arg1 = load_operand_value8(cpu_state, inst, src);
+            uint8_t count = (arg1&0x1f) % 8;
+            uint8_t res = (arg0 << count | (arg0 >> (8 - count)));
+            store_operand_value8(cpu_state, inst, dst, res);
+            set_flags_szp_value8(cpu_state, res);
+            if(count != 0) {
+                cpu_state->regs[REG_FL] &= ~FLAG_CF;
+                if(res & 0x80) {
+                    cpu_state->regs[REG_FL] |= FLAG_CF;
+                }
+                if(count == 1) {
+                    cpu_state->regs[REG_FL] &= ~FLAG_OF;
+                    if((arg0 & 0x80) ^ (res & 0x80)) {
+                        cpu_state->regs[REG_FL] |= FLAG_OF;
+                    }
+                }
+            }
+        }
+        else if(inst.data_size == 2) {
+            uint16_t arg0 = load_operand_value16(cpu_state, inst, dst);
+            uint8_t arg1 = load_operand_value8(cpu_state, inst, src);
+            arg1 &= 0x1f;
+            uint16_t res = arg0 << arg1;
+            store_operand_value16(cpu_state, inst, dst, res);
+            set_flags_szp_value16(cpu_state, res);
+            if(arg1 != 0) {
+                cpu_state->regs[REG_FL] &= ~FLAG_CF;
+                if(arg0 & 0x8000) {
+                    cpu_state->regs[REG_FL] |= FLAG_CF;
+                }
+                if(arg1 == 1) {
+                    cpu_state->regs[REG_FL] &= ~FLAG_OF;
+                    if((arg0 & 0x8000) ^ (res & 0x8000)) {
+                        cpu_state->regs[REG_FL] |= FLAG_OF;
+                    }
+                }
+            }
+        }        
+    }
+    else if(inst.opcode == OPCODE_ror) {
+        // TODO
+    }
+    else if(inst.opcode == OPCODE_rcl) {
+        // TODO
+    }
+    else if(inst.opcode == OPCODE_rcr) {
+        // TODO
     }
     else if(inst.opcode == OPCODE_jmp) {
         assert(inst.noperands == 1);
@@ -652,6 +846,35 @@ static void cpu_exec(CPU_State *cpu_state, Instruction *out_inst) {
         cpu_state->regs[REG_C] -= 1;
         if(cpu_state->regs[REG_C] != 0 && !(cpu_state->regs[REG_FL] & FLAG_ZF)) {
             cpu_jmp_to_op(cpu_state, inst, inst.operands[0], false);
+        }
+    }
+    else if(inst.opcode == OPCODE_push) {
+        assert(inst.noperands == 1);
+        Inst_Operand op = inst.operands[0];
+        uint16_t word;
+        if(inst.data_size == 8) {
+            word = load_operand_value8(cpu_state, inst, op);
+        }
+        else if(inst.data_size == 16) {
+            word = load_operand_value16(cpu_state, inst, op);
+        }
+        uint16_t seg = cpu_state->regs[REG_CS];
+        uint16_t offs = cpu_state->regs[REG_IP];
+        offs -= 2;
+        mem_store8_at_far(cpu_state->memory, (Far_Ptr){.seg = seg, .offs = offs}, 0, word);
+    }
+    else if(inst.opcode == OPCODE_pop) {
+        assert(inst.noperands == 1);
+        Inst_Operand op = inst.operands[0];
+        uint16_t seg = cpu_state->regs[REG_CS];
+        uint16_t offs = cpu_state->regs[REG_IP];
+        uint16_t word = mem_load8_at_far(cpu_state->memory, (Far_Ptr){.seg = seg, .offs = offs}, 0);
+        offs += 2;
+        if(inst.data_size == 8) {
+            store_operand_value8(cpu_state, inst, op, (uint8_t)word);
+        }
+        else if(inst.data_size == 16) {
+            store_operand_value16(cpu_state, inst, op, word);
         }
     }
 }

@@ -116,12 +116,6 @@ static Instruction inst_try_decode(Inst_Encoding encoding, DecodeCtx *ctx) {
             .reg = reg_operands[idx][w]
         };
     }
-    else if(inst_has[BITS_V] && inst_bits[BITS_V]) {
-        *reg_operand = (Inst_Operand) {
-            .type = OPERAND_REG,
-            .reg = {REG_C, 2, 0},
-        };
-    }
     // Parse mod operand
     if(inst_has[BITS_RM]) {
         inst.noperands += 1;
@@ -270,6 +264,23 @@ static Instruction inst_try_decode(Inst_Encoding encoding, DecodeCtx *ctx) {
                 .imm = {
                     .value = imm_value,
                     .size = imm_size,
+                },
+            };
+        }
+    }
+    if(inst_has[BITS_V]) {
+        if(inst_bits[BITS_V]) {
+            *reg_operand = (Inst_Operand) {
+                .type = OPERAND_REG,
+                .reg = {REG_C, 1, 0},
+            };
+        }
+        else {
+            *other_operand = (Inst_Operand) {
+                .type = OPERAND_IMM,
+                .imm = {
+                    .value = 1,
+                    .size = 1,
                 },
             };
         }
